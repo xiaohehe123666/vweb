@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="vwebedit-logo.png">
+    <title>VWebEdit - Visual Web Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1b1b1f;
+            color: #b8b8be;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 180px 1fr 240px;
+            grid-template-rows: 44px 1fr;
+            height: 100vh;
+            min-width: 600px;
+        }
+
+        /* ── Header ── */
+        .header {
+            grid-column: 1 / -1;
+            background: #232328;
+            border-bottom: 1px solid #2e2e34;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+        }
+
+        .header .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #e8e8ec;
+            letter-spacing: -0.2px;
+        }
+        .header .logo img {
+            height: 22px;
+            width: auto;
+        }
+        .header .logo em { font-style: normal; color: #e07a3c; }
+        .header .sep { width: 1px; height: 18px; background: #2e2e34; }
+        .header .file-name { font-size: 12px; color: #6e6e78; }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 6px;
+        }
+
+        .header-actions button {
+            padding: 5px 12px;
+            border: 1px solid #2e2e34;
+            background: #2a2a30;
+            color: #9e9ea8;
+            font-size: 11px;
+            font-family: inherit;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+            white-space: nowrap;
+        }
+
+        .header-actions button:hover { background: #35353c; color: #ddd; border-color: #45454e; }
+        .header-actions button.primary { background: #e07a3c; border-color: #e07a3c; color: #fff; }
+        .header-actions button.primary:hover { background: #c96a2f; }
+        .header-actions button.preview-btn { border-color: #4a7a4a; color: #7abe7a; }
+        .header-actions button.preview-btn:hover { background: #2a3a2a; }
+        .header-actions button.preview-btn.active { background: #3a5a3a; border-color: #5a9a5a; color: #a0dea0; }
+        .header-actions button.ai-btn { border-color: #5a4a8a; color: #a88ada; }
+        .header-actions button.ai-btn:hover { background: #2e2a3e; }
+
+        /* ── AI Modal ── */
+        .ai-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.55); z-index: 1000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .ai-modal-overlay.show { display: flex; }
+        .ai-modal {
+            background: #232328; border: 1px solid #35353c; border-radius: 8px;
+            width: 560px; max-height: 85vh; display: flex; flex-direction: column;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+        }
+        .ai-modal-header {
+            padding: 14px 18px; border-bottom: 1px solid #2e2e34;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .ai-modal-header h2 { font-size: 14px; font-weight: 600; color: #e8e8ec; }
+        .ai-modal-close {
+            background: none; border: none; color: #6e6e78; cursor: pointer;
+            font-size: 18px; padding: 2px 6px; border-radius: 3px;
+        }
+        .ai-modal-close:hover { background: #2e2e34; color: #b8b8be; }
+        .ai-modal-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+        .ai-field { margin-bottom: 14px; }
+        .ai-field label {
+            display: block; font-size: 11px; font-weight: 600; color: #8e8e98;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+        }
+        .ai-field select, .ai-field input, .ai-field textarea {
+            width: 100%; padding: 8px 12px; background: #1b1b1f; border: 1px solid #35353c;
+            border-radius: 4px; color: #ccccd2; font-size: 13px; font-family: inherit;
+            outline: none; transition: border-color 0.15s;
+        }
+        .ai-field select:focus, .ai-field input:focus, .ai-field textarea:focus {
+            border-color: #7a6aba;
+        }
+        .ai-field textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+        .ai-field select { cursor: pointer; }
+        .ai-field .hint-text { font-size: 11px; color: #55555c; margin-top: 4px; }
+        .ai-provider-row {
+            display: flex; gap: 6px; margin-bottom: 14px;
+        }
+        .ai-provider-btn {
+            flex: 1; padding: 8px; border: 1px solid #35353c; background: #1b1b1f;
+            border-radius: 4px; color: #8e8e98; font-size: 12px; font-weight: 500;
+            cursor: pointer; text-align: center; transition: all 0.12s; font-family: inherit;
+        }
+        .ai-provider-btn:hover { border-color: #45454e; color: #ccccd2; }
+        .ai-provider-btn.active { border-color: #7a6aba; background: #2a2640; color: #b8a8ea; }
+        .ai-modal-footer {
+            padding: 12px 18px; border-top: 1px solid #2e2e34;
+            display: flex; justify-content: flex-end; gap: 8px;
+        }
+        .ai-modal-footer button {
+            padding: 8px 18px; border-radius: 4px; font-size: 12px; font-weight: 500;
+            cursor: pointer; font-family: inherit; border: 1px solid #35353c;
+            background: #2a2a30; color: #9e9ea8; transition: all 0.12s;
+        }
+        .ai-modal-footer button:hover { background: #35353c; color: #ddd; }
+        .ai-modal-footer button.ai-submit {
+            background: #7a6aba; border-color: #7a6aba; color: #fff;
+        }
+        .ai-modal-footer button.ai-submit:hover { background: #6a5aaa; }
+        .ai-modal-footer button.ai-submit:disabled {
+            opacity: 0.5; cursor: not-allowed;
+        }
+        .ai-status {
+            font-size: 12px; color: #6e6e78; padding: 8px 0;
+            display: none; align-items: center; gap: 8px;
+        }
+        .ai-status.show { display: flex; }
+        .ai-status.error { color: #da6a6a; }
+        .ai-status.success { color: #7abe7a; }
+        .ai-spinner {
+            width: 14px; height: 14px; border: 2px solid #35353c;
+            border-top-color: #7a6aba; border-radius: 50%;
+            animation: ai-spin 0.8s linear infinite;
+        }
+        @keyframes ai-spin { to { transform: rotate(360deg); } }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            background: #232328;
+            border-right: 1px solid #2e2e34;
+            overflow-y: auto;
+            padding: 10px 8px;
+        }
+
+        .sidebar h3 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #55555c;
+            margin: 10px 4px 6px;
+        }
+
+        .sidebar h3:first-child { margin-top: 2px; }
+
+        .component-list { display: flex; flex-direction: column; gap: 1px; }
+
+        .component-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: grab;
+            transition: background 0.1s;
+            user-select: none;
+        }
+
+        .component-item:hover { background: #2a2a30; }
+        .component-item:active { cursor: grabbing; background: #2e2e36; }
+
+        .component-item .icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+            background: #2a2a30;
+            color: #8e8e98;
+        }
+
+        .component-item .name { font-size: 12px; font-weight: 500; color: #ccccd2; }
+
+        /* ── Canvas Area ── */
+        .canvas-area { background: #1b1b1f; position: relative; overflow: hidden; }
+
+        .canvas-toolbar {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a2a30;
+            border: 1px solid #35353c;
+            border-radius: 4px;
+            padding: 3px;
+            display: flex;
+            gap: 1px;
+            z-index: 10;
+            font-size: 11px;
+        }
+
+        .canvas-toolbar span {
+            padding: 4px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            color: #6e6e78;
+            transition: all 0.1s;
+        }
+
+        .canvas-toolbar span:hover { color: #b8b8be; }
+        .canvas-toolbar span.active { background: #3a3a42; color: #e0e0e6; }
+
+        .canvas {
+            position: absolute;
+            top: 48px;
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            background: #ffffff;
+            border-radius: 3px;
+            overflow: auto;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.15);
+            transition: width 0.3s ease;
+        }
+
+        .canvas.drag-over { outline: 2px dashed #e07a3c; outline-offset: -2px; }
+
+        /* ── Canvas Elements ── */
+        .canvas-element {
+            position: absolute;
+            cursor: move;
+            min-width: 20px;
+            min-height: 16px;
+            overflow: hidden;
+        }
+
+        .canvas-element:hover { outline: 1.5px solid #e07a3c; outline-offset: 1px; }
+        .canvas-element.selected { outline: 1.5px solid #e07a3c; outline-offset: 1px; }
+
+        .canvas-element .resize-handle {
+            position: absolute;
+            width: 7px;
+            height: 7px;
+            background: #fff;
+            border: 1.5px solid #e07a3c;
+            border-radius: 1px;
+            display: none;
+            z-index: 4;
+        }
+
+        .canvas-element.selected .resize-handle { display: block; }
+        .resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+        .resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+        .resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+        .resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+
+        .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 18px;
+            height: 18px;
+            background: #d94040;
+            border-radius: 2px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            z-index: 5;
+        }
+
+        .canvas-element.selected .delete-btn { display: flex; }
+
+        /* ── Preview Mode ── */
+        body.preview-mode .canvas-element { cursor: default; }
+        body.preview-mode .canvas-element:hover { outline: none; }
+        body.preview-mode .canvas-element.selected { outline: none; }
+        body.preview-mode .canvas-element .resize-handle { display: none !important; }
+        body.preview-mode .canvas-element .delete-btn { display: none !important; }
+        body.preview-mode .canvas-toolbar { display: none; }
+        body.preview-mode .coords-badge { display: none; }
+        body.preview-mode .canvas { cursor: default; }
+
+        .preview-exit {
+            display: none;
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            padding: 6px 18px;
+            background: #232328;
+            border: 1px solid #3a5a3a;
+            border-radius: 4px;
+            color: #7abe7a;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        .preview-exit:hover { background: #2a3a2a; }
+        body.preview-mode .preview-exit { display: block; }
+
+        /* ── Empty State ── */
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .empty-state .empty-icon {
+            width: 36px;
+            height: 36px;
+            border: 2px dashed #d0d0d0;
+            border-radius: 4px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #bbb;
+        }
+
+        .empty-state p { font-size: 13px; color: #888; }
+        .empty-state .hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+        .coords-badge {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background: #2a2a30;
+            border: 1px solid #35353c;
+            border-radius: 3px;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #55555c;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* ── Properties Panel ── */
+        .props-panel {
+            background: #232328;
+            border-left: 1px solid #2e2e34;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .props-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid #2e2e34;
+            font-size: 11px;
+            font-weight: 600;
+            color: #8e8e98;
+        }
+
+        .props-section {
+            border-bottom: 1px solid #2e2e34;
+            padding: 10px 12px;
+        }
+
+        .props-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #55555c;
+            margin-bottom: 8px;
+        }
+
+        .prop-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .prop-row label {
+            font-size: 11px;
+            color: #6e6e78;
+            width: 32px;
+            flex-shrink: 0;
+        }
+
+        .prop-row input[type="number"],
+        .prop-row input[type="text"] {
+            flex: 1;
+            padding: 4px 6px;
+            background: #1b1b1f;
+            border: 1px solid #2e2e34;
+            border-radius: 3px;
+            color: #ccccd2;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            min-width: 0;
+        }
+
+        .prop-row input:focus { border-color: #e07a3c; }
+
+        .prop-row input[type="color"] {
+            width: 26px;
+            height: 22px;
+            border: 1px solid #2e2e34;
+            border-radius: 3px;
+            background: #1b1b1f;
+            cursor: pointer;
+            padding: 1px;
+        }
+
+        .prop-row .color-hex {
+            flex: 1;
+            padding: 4px 6px;
+            background: #1b1b1f;
+            border: 1px solid #2e2e34;
+            border-radius: 3px;
+            color: #ccccd2;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+        }
+
+        .prop-row select {
+            flex: 1;
+            padding: 4px 6px;
+            background: #1b1b1f;
+            border: 1px solid #2e2e34;
+            border-radius: 3px;
+            color: #ccccd2;
+            font-size: 11px;
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .prop-row select:focus { border-color: #e07a3c; }
+
+        .prop-row textarea {
+            flex: 1;
+            padding: 6px;
+            background: #1b1b1f;
+            border: 1px solid #2e2e34;
+            border-radius: 3px;
+            color: #ccccd2;
+            font-size: 11px;
+            font-family: inherit;
+            outline: none;
+            resize: vertical;
+            min-height: 48px;
+            line-height: 1.4;
+        }
+
+        .prop-row textarea:focus { border-color: #e07a3c; }
+
+        .prop-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .prop-2col .col {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .prop-2col .col label {
+            font-size: 10px;
+            color: #55555c;
+            width: 14px;
+        }
+
+        .prop-2col .col input {
+            flex: 1;
+            padding: 4px 5px;
+            background: #1b1b1f;
+            border: 1px solid #2e2e34;
+            border-radius: 3px;
+            color: #ccccd2;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            min-width: 0;
+        }
+
+        .prop-2col .col input:focus { border-color: #e07a3c; }
+
+        .no-selection {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #444;
+            font-size: 12px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* ── Code Section ── */
+        .code-section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .code-tabs {
+            display: flex;
+            background: #232328;
+            border-top: 1px solid #2e2e34;
+            border-bottom: 1px solid #2e2e34;
+        }
+
+        .code-tab {
+            padding: 7px 12px;
+            font-size: 10px;
+            color: #55555c;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            border-right: 1px solid #2e2e34;
+            transition: color 0.1s;
+        }
+
+        .code-tab:hover { color: #9e9ea8; }
+        .code-tab.active { color: #d0d0d6; border-bottom-color: #e07a3c; background: #1e1e22; }
+
+        .code-content {
+            flex: 1;
+            overflow: auto;
+            padding: 10px;
+            position: relative;
+            background: #1e1e22;
+            min-height: 120px;
+        }
+
+        .code-content pre {
+            font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+            font-size: 11px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #b0b0b8;
+        }
+
+        .code-content .tag { color: #8ec07c; }
+        .code-content .attr { color: #d4a857; }
+        .code-content .value { color: #9ec9cf; }
+        .code-content .text { color: #b0b0b8; }
+        .code-content .comment { color: #4a4a52; }
+        .code-content .property { color: #83a598; }
+        .code-content .selector { color: #8ec07c; }
+        .code-content .punctuation { color: #4a4a52; }
+
+        .code-btns {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .copy-btn {
+            padding: 2px 7px;
+            background: #2a2a30;
+            border: 1px solid #35353c;
+            border-radius: 3px;
+            color: #6e6e78;
+            font-size: 10px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover { background: #35353c; color: #ccc; }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #35353c; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #45454e; }
+
+        .editable-text { outline: none; }
+        .editable-text:focus { outline: 1px dashed rgba(224,122,60,0.5); outline-offset: 2px; }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(60px);
+            background: #2a2a30;
+            border: 1px solid #3a5a3a;
+            color: #a0dea0;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 99999;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <div class="logo"><img src="vwebedit-logo.png" alt="VWebEdit"></div>
+            <div class="sep"></div>
+            <div class="file-name">untitled.html</div>
+            <div class="header-actions">
+                <button onclick="clearCanvas()">清空</button>
+                <button onclick="exportProject()">导出</button>
+                <button onclick="copyPrompt()">复制提示词</button>
+                <button class="preview-btn" id="previewToggle" onclick="togglePreview()">预览</button>
+                <button class="ai-btn" onclick="openAiModal()">AI 助手</button>
+                <button class="primary" onclick="copyCode()">复制代码</button>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <h3>基础</h3>
+            <div class="component-list">
+                <div class="component-item" draggable="true" data-type="heading"><div class="icon">H</div><div class="name">标题</div></div>
+                <div class="component-item" draggable="true" data-type="text"><div class="icon">T</div><div class="name">文本</div></div>
+                <div class="component-item" draggable="true" data-type="button"><div class="icon">B</div><div class="name">按钮</div></div>
+                <div class="component-item" draggable="true" data-type="link"><div class="icon">A</div><div class="name">链接</div></div>
+                <div class="component-item" draggable="true" data-type="image"><div class="icon">I</div><div class="name">图片</div></div>
+                <div class="component-item" draggable="true" data-type="input"><div class="icon">F</div><div class="name">输入框</div></div>
+                <div class="component-item" draggable="true" data-type="divider"><div class="icon" style="font-weight:400">—</div><div class="name">分割线</div></div>
+            </div>
+            <h3>布局</h3>
+            <div class="component-list">
+                <div class="component-item" draggable="true" data-type="container"><div class="icon">C</div><div class="name">容器</div></div>
+                <div class="component-item" draggable="true" data-type="columns"><div class="icon">⫼</div><div class="name">两列</div></div>
+                <div class="component-item" draggable="true" data-type="spacer"><div class="icon">↕</div><div class="name">间距</div></div>
+            </div>
+            <h3>组件</h3>
+            <div class="component-list">
+                <div class="component-item" draggable="true" data-type="card"><div class="icon">D</div><div class="name">卡片</div></div>
+                <div class="component-item" draggable="true" data-type="nav"><div class="icon">N</div><div class="name">导航栏</div></div>
+                <div class="component-item" draggable="true" data-type="hero"><div class="icon">S</div><div class="name">Hero</div></div>
+                <div class="component-item" draggable="true" data-type="footer"><div class="icon">⌗</div><div class="name">页脚</div></div>
+                <div class="component-item" draggable="true" data-type="badge"><div class="icon">●</div><div class="name">徽章</div></div>
+                <div class="component-item" draggable="true" data-type="alert"><div class="icon">!</div><div class="name">提示框</div></div>
+                <div class="component-item" draggable="true" data-type="list"><div class="icon">≡</div><div class="name">列表</div></div>
+                <div class="component-item" draggable="true" data-type="testimonial"><div class="icon">"</div><div class="name">引用</div></div>
+                <div class="component-item" draggable="true" data-type="pricing"><div class="icon">$</div><div class="name">价格卡</div></div>
+                <div class="component-item" draggable="true" data-type="progress"><div class="icon">▰</div><div class="name">进度条</div></div>
+                <div class="component-item" draggable="true" data-type="video"><div class="icon">▶</div><div class="name">视频</div></div>
+                <div class="component-item" draggable="true" data-type="map"><div class="icon">◎</div><div class="name">地图占位</div></div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div class="canvas-toolbar">
+                <span class="active" data-view="desktop">桌面</span>
+                <span data-view="tablet">平板</span>
+                <span data-view="mobile">手机</span>
+            </div>
+            <div class="canvas" id="canvas">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">+</div>
+                    <p>拖入组件开始设计</p>
+                    <div class="hint">从左侧组件库拖拽到画布</div>
+                </div>
+            </div>
+            <div class="coords-badge" id="coordsBadge">0, 0</div>
+        </div>
+
+        <div class="props-panel" id="propsPanel">
+            <div id="propsContent">
+                <div class="no-selection">选中画布上的组件<br>编辑属性和样式</div>
+            </div>
+            <div class="code-section">
+                <div class="code-tabs">
+                    <div class="code-tab active" data-tab="html">HTML</div>
+                    <div class="code-tab" data-tab="css">CSS</div>
+                    <div class="code-tab" data-tab="full">完整</div>
+                </div>
+                <div class="code-content">
+                    <div class="code-btns">
+                        <button class="copy-btn" onclick="copyPrompt()">提示词</button>
+                        <button class="copy-btn" onclick="copyCode()">复制</button>
+                    </div>
+                    <pre id="codeOutput"><span class="comment">&lt;!-- 拖拽组件后代码实时生成 --&gt;</span></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="preview-exit" id="previewExit" onclick="togglePreview()">退出预览 (Esc)</button>
+    <div class="toast" id="toast"></div>
+
+    <div class="ai-modal-overlay" id="aiModalOverlay">
+        <div class="ai-modal">
+            <div class="ai-modal-header">
+                <h2>AI 助手 — 让 AI 帮你写</h2>
+                <button class="ai-modal-close" onclick="closeAiModal()">×</button>
+            </div>
+            <div class="ai-modal-body">
+                <div class="ai-field">
+                    <label>生成模式</label>
+                    <div class="ai-provider-row">
+                        <button class="ai-provider-btn active" data-mode="component" onclick="selectAiMode('component')">单个组件</button>
+                        <button class="ai-provider-btn" data-mode="website" onclick="selectAiMode('website')">完整网站</button>
+                    </div>
+                </div>
+                <div class="ai-field">
+                    <label>选择 AI 模型</label>
+                    <div class="ai-provider-row">
+                        <button class="ai-provider-btn active" data-provider="deepseek" onclick="selectAiProvider('deepseek')">DeepSeek</button>
+                        <button class="ai-provider-btn" data-provider="glm" onclick="selectAiProvider('glm')">GLM (智谱)</button>
+                        <button class="ai-provider-btn" data-provider="openai" onclick="selectAiProvider('openai')">ChatGPT</button>
+                    </div>
+                </div>
+                <div class="ai-field">
+                    <label>API Key</label>
+                    <input type="password" id="aiApiKey" placeholder="输入你的 API Key...">
+                    <div class="hint-text" id="aiKeyHint">DeepSeek API Key 从 platform.deepseek.com 获取</div>
+                </div>
+                <div class="ai-field">
+                    <label id="aiPromptLabel">描述你想要的组件</label>
+                    <textarea id="aiPrompt" placeholder="例如：一个带搜索框的用户个人资料卡片，包含头像、姓名、职位和三个社交链接图标"></textarea>
+                </div>
+                <div class="ai-status" id="aiStatus">
+                    <div class="ai-spinner"></div>
+                    <span id="aiStatusText">AI 正在生成...</span>
+                </div>
+            </div>
+            <div class="ai-modal-footer">
+                <button onclick="closeAiModal()">取消</button>
+                <button class="ai-submit" id="aiSubmitBtn" onclick="submitAiRequest()">生成并添加到画布</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const codeOutput = document.getElementById('codeOutput');
+        const emptyState = document.getElementById('emptyState');
+        const propsContent = document.getElementById('propsContent');
+        const coordsBadge = document.getElementById('coordsBadge');
+
+        let elements = [];
+        let selectedElement = null;
+        let currentTab = 'html';
+        let dragData = null;
+        let isDragging = false;
+        let isResizing = false;
+        let isPreview = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        /* ── Component Templates ── */
+        const T = {
+            heading: {
+                html: '<h2 class="editable-text" style="font-size:24px;font-weight:700;color:#1a1a1a;line-height:1.3;margin:0;">页面标题</h2>',
+                style: 'padding:8px;',
+                w: 300, h: 44,
+                editable: true
+            },
+            text: {
+                html: '<p class="editable-text" style="font-size:14px;line-height:1.7;color:#555;margin:0;">这是一段正文内容，可以在这里编辑你的文字。支持多行显示，双击即可编辑。</p>',
+                style: 'padding:8px;',
+                w: 340, h: 64,
+                editable: true
+            },
+            button: {
+                html: '<button style="padding:10px 28px;background:#1a1a1a;color:#fff;border:none;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;letter-spacing:0.2px;">立即开始</button>',
+                style: '',
+                w: 120, h: 40
+            },
+            link: {
+                html: '<a href="#" class="editable-text" style="font-size:14px;color:#e07a3c;text-decoration:none;font-weight:500;">了解更多 →</a>',
+                style: 'padding:4px 8px;',
+                w: 110, h: 28,
+                editable: true
+            },
+            image: {
+                html: '<div style="width:100%;height:100%;background:linear-gradient(135deg,#f0f0f0,#e8e8e8);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#999;font-size:12px;border-radius:4px;gap:6px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><span>图片占位</span></div>',
+                style: '',
+                w: 220, h: 150
+            },
+            input: {
+                html: '<div style="width:100%;display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:500;color:#333;">字段标签</label><input type="text" placeholder="请输入内容..." style="width:100%;padding:8px 12px;border:1px solid #d8d8d8;border-radius:4px;font-size:13px;color:#333;outline:none;background:#fff;"></div>',
+                style: '',
+                w: 220, h: 56
+            },
+            divider: {
+                html: '<hr style="width:100%;border:none;border-top:1px solid #e8e8e8;">',
+                style: 'padding:10px 0;',
+                w: 300, h: 21
+            },
+            container: {
+                html: '<div style="width:100%;height:100%;border:1.5px dashed #d0d0d0;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px;background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(0,0,0,0.015) 8px,rgba(0,0,0,0.015) 16px);">容器区域</div>',
+                style: 'background:#fcfcfc;',
+                w: 300, h: 200
+            },
+            columns: {
+                html: '<div style="width:100%;height:100%;display:flex;gap:16px;"><div style="flex:1;background:#f7f7f7;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;border:1px solid #eee;">左列</div><div style="flex:1;background:#f7f7f7;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;border:1px solid #eee;">右列</div></div>',
+                style: '',
+                w: 420, h: 160
+            },
+            spacer: {
+                html: '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><div style="width:40px;border-top:1px dashed #d0d0d0;"></div></div>',
+                style: 'background:rgba(0,0,0,0.02);',
+                w: 200, h: 40
+            },
+            card: {
+                html: '<div style="width:100%;height:100%;background:#fff;border-radius:8px;border:1px solid #ebebeb;padding:20px;display:flex;flex-direction:column;"><h3 class="editable-text" style="margin:0 0 8px;font-size:16px;font-weight:600;color:#1a1a1a;line-height:1.3;">卡片标题</h3><p class="editable-text" style="margin:0;font-size:13px;color:#777;line-height:1.6;flex:1;">这里是卡片的描述内容，可以简要介绍一些信息。</p><div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0;"><a href="#" style="font-size:12px;color:#e07a3c;text-decoration:none;font-weight:500;">查看详情 →</a></div></div>',
+                style: '',
+                w: 260, h: 180,
+                editable: true
+            },
+            nav: {
+                html: '<nav style="width:100%;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#1a1a1a;border-radius:4px;"><span class="editable-text" style="color:#fff;font-weight:600;font-size:15px;letter-spacing:-0.3px;">Brand</span><div style="display:flex;gap:20px;align-items:center;"><a href="#" style="color:#aaa;text-decoration:none;font-size:12px;font-weight:400;">产品</a><a href="#" style="color:#aaa;text-decoration:none;font-size:12px;font-weight:400;">文档</a><a href="#" style="color:#aaa;text-decoration:none;font-size:12px;font-weight:400;">定价</a><button style="padding:5px 14px;background:#e07a3c;color:#fff;border:none;border-radius:3px;font-size:11px;cursor:pointer;font-weight:500;">登录</button></div></nav>',
+                style: '',
+                w: 500, h: 52
+            },
+            hero: {
+                html: '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 24px;"><div style="font-size:11px;color:#e07a3c;font-weight:500;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">全新发布</div><h1 class="editable-text" style="color:#fff;font-size:28px;font-weight:700;margin:0 0 12px;line-height:1.2;letter-spacing:-0.5px;">构建你的下一个项目</h1><p class="editable-text" style="color:#8a8aaa;font-size:14px;max-width:320px;margin:0;line-height:1.6;">快速搭建现代化网页，无需编写任何代码。</p><div style="display:flex;gap:10px;margin-top:20px;"><button style="padding:10px 28px;background:#e07a3c;color:#fff;border:none;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;">免费试用</button><button style="padding:10px 28px;background:transparent;color:#ccc;border:1px solid #444;border-radius:4px;font-size:13px;cursor:pointer;">查看文档</button></div></div>',
+                style: '',
+                w: 500, h: 300,
+                editable: true
+            },
+            footer: {
+                html: '<footer style="width:100%;height:100%;background:#1a1a1a;border-radius:4px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;"><span class="editable-text" style="color:#555;font-size:12px;">© 2026 Brand Inc.</span><div style="display:flex;gap:18px;"><a href="#" style="color:#555;text-decoration:none;font-size:11px;">隐私政策</a><a href="#" style="color:#555;text-decoration:none;font-size:11px;">服务条款</a><a href="#" style="color:#555;text-decoration:none;font-size:11px;">联系我们</a></div></footer>',
+                style: '',
+                w: 500, h: 52,
+                editable: true
+            },
+            badge: {
+                html: '<span class="editable-text" style="display:inline-block;padding:4px 12px;background:#fef0e6;color:#e07a3c;font-size:11px;font-weight:600;border-radius:12px;border:1px solid #f8d8c0;">新功能</span>',
+                style: '',
+                w: 70, h: 28,
+                editable: true
+            },
+            alert: {
+                html: '<div style="width:100%;height:100%;background:#f0f7ff;border:1px solid #c8ddf0;border-radius:6px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px;"><div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;"><span style="color:#fff;font-size:10px;font-weight:700;">i</span></div><div><div class="editable-text" style="font-size:13px;color:#1e40af;font-weight:500;margin-bottom:2px;">提示标题</div><div class="editable-text" style="font-size:12px;color:#3b6fa0;line-height:1.4;">这是一条信息提示的具体内容描述。</div></div></div>',
+                style: '',
+                w: 320, h: 64,
+                editable: true
+            },
+            list: {
+                html: '<ul style="width:100%;padding:0;margin:0;list-style:none;"><li class="editable-text" style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444;display:flex;align-items:center;gap:8px;"><span style="width:5px;height:5px;background:#e07a3c;border-radius:50%;flex-shrink:0;"></span>列表项目一</li><li class="editable-text" style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444;display:flex;align-items:center;gap:8px;"><span style="width:5px;height:5px;background:#e07a3c;border-radius:50%;flex-shrink:0;"></span>列表项目二</li><li class="editable-text" style="padding:8px 12px;font-size:13px;color:#444;display:flex;align-items:center;gap:8px;"><span style="width:5px;height:5px;background:#e07a3c;border-radius:50%;flex-shrink:0;"></span>列表项目三</li></ul>',
+                style: '',
+                w: 220, h: 100,
+                editable: true
+            },
+            testimonial: {
+                html: '<div style="width:100%;height:100%;background:#fafafa;border-radius:8px;padding:20px;border:1px solid #f0f0f0;"><div style="font-size:20px;color:#e07a3c;line-height:1;margin-bottom:8px;">"</div><p class="editable-text" style="font-size:13px;color:#555;line-height:1.6;margin:0 0 14px;font-style:italic;">这个产品彻底改变了我们的工作流程，效率提升了一倍不止。</p><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;background:#e8e8e8;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#999;">J</div><div><div class="editable-text" style="font-size:12px;font-weight:600;color:#333;">张三</div><div class="editable-text" style="font-size:11px;color:#999;">产品经理 · ABC公司</div></div></div></div>',
+                style: '',
+                w: 280, h: 180,
+                editable: true
+            },
+            pricing: {
+                html: '<div style="width:100%;height:100%;background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:24px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;"><div class="editable-text" style="font-size:13px;color:#888;font-weight:500;margin-bottom:6px;">专业版</div><div style="display:flex;align-items:baseline;gap:2px;margin-bottom:4px;"><span class="editable-text" style="font-size:32px;font-weight:700;color:#1a1a1a;">¥99</span><span style="font-size:13px;color:#aaa;">/月</span></div><div style="font-size:11px;color:#aaa;margin-bottom:16px;">适合中小团队使用</div><div style="width:100%;text-align:left;margin-bottom:16px;"><div style="padding:5px 0;font-size:12px;color:#555;border-bottom:1px solid #f5f5f5;">✓  无限项目</div><div style="padding:5px 0;font-size:12px;color:#555;border-bottom:1px solid #f5f5f5;">✓  团队协作</div><div style="padding:5px 0;font-size:12px;color:#555;">✓  优先支持</div></div><button style="width:100%;padding:10px;background:#1a1a1a;color:#fff;border:none;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;margin-top:auto;">选择方案</button></div>',
+                style: '',
+                w: 220, h: 320,
+                editable: true
+            },
+            progress: {
+                html: '<div style="width:100%;display:flex;flex-direction:column;gap:6px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span class="editable-text" style="font-size:12px;font-weight:500;color:#333;">项目进度</span><span class="editable-text" style="font-size:12px;color:#888;">65%</span></div><div style="width:100%;height:8px;background:#eaeaea;border-radius:4px;overflow:hidden;"><div style="width:65%;height:100%;background:linear-gradient(90deg,#e07a3c,#d46a2c);border-radius:4px;transition:width 0.3s;"></div></div></div>',
+                style: '',
+                w: 240, h: 44,
+                editable: true
+            },
+            video: {
+                html: '<div style="width:100%;height:100%;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#1a1a2e,#0a0a15);"></div><div style="position:relative;width:48px;height:48px;background:rgba(255,255,255,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);"><span style="color:#fff;font-size:18px;margin-left:3px;">▶</span></div><div style="position:absolute;bottom:10px;left:12px;right:12px;height:3px;background:rgba(255,255,255,0.15);border-radius:2px;"><div style="width:35%;height:100%;background:#e07a3c;border-radius:2px;"></div></div></div>',
+                style: '',
+                w: 300, h: 170
+            },
+            map: {
+                html: '<div style="width:100%;height:100%;background:#e8ece4;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#7a8a6a;position:relative;overflow:hidden;"><div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 20px,rgba(0,0,0,0.03) 20px,rgba(0,0,0,0.03) 21px),repeating-linear-gradient(90deg,transparent,transparent 20px,rgba(0,0,0,0.03) 20px,rgba(0,0,0,0.03) 21px);"></div><div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7a8a6a" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg><span style="font-size:12px;font-weight:500;">地图区域</span></div></div>',
+                style: '',
+                w: 320, h: 200
+            }
+        };
+
+        /* ── Drag from sidebar ── */
+        document.querySelectorAll('.component-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                dragData = { type: item.dataset.type };
+                e.dataTransfer.effectAllowed = 'copy';
+            });
+        });
+
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            canvas.classList.add('drag-over');
+        });
+
+        canvas.addEventListener('dragleave', () => canvas.classList.remove('drag-over'));
+
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            canvas.classList.remove('drag-over');
+            if (!dragData || isPreview) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left + canvas.scrollLeft;
+            const y = e.clientY - rect.top + canvas.scrollTop;
+            addElement(dragData.type, x, y);
+            dragData = null;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isPreview) return;
+            const rect = canvas.getBoundingClientRect();
+            coordsBadge.textContent = `${Math.round(e.clientX - rect.left + canvas.scrollLeft)}, ${Math.round(e.clientY - rect.top + canvas.scrollTop)}`;
+        });
+
+        /* ── Element Management ── */
+        function addElement(type, x, y) {
+            const t = T[type];
+            if (!t) return;
+            const id = 'el-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            const el = {
+                id, type,
+                x: Math.max(4, x - t.w / 2),
+                y: Math.max(4, y - t.h / 2),
+                width: t.w, height: t.h,
+                origW: t.w, origH: t.h,
+                origHtml: t.html,
+                html: t.html, style: t.style
+            };
+            elements.push(el);
+            renderElement(el);
+            updateCode();
+            updateEmptyState();
+            selectElement(id);
+        }
+
+        function renderElement(el) {
+            const div = document.createElement('div');
+            div.className = 'canvas-element';
+            div.id = el.id;
+            div.style.cssText = `left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;${el.style}`;
+            div.innerHTML = el.html +
+                '<div class="resize-handle se" data-handle="se"></div>' +
+                '<div class="resize-handle sw" data-handle="sw"></div>' +
+                '<div class="resize-handle ne" data-handle="ne"></div>' +
+                '<div class="resize-handle nw" data-handle="nw"></div>' +
+                `<div class="delete-btn" data-delete="${el.id}">×</div>`;
+
+            div.addEventListener('mousedown', (e) => {
+                if (isPreview) return;
+                if (e.target.classList.contains('resize-handle')) {
+                    e.preventDefault();
+                    startResize(e, el.id, e.target.dataset.handle);
+                    return;
+                }
+                if (e.target.closest('[data-delete]')) return;
+                if (e.target.classList.contains('editable-text') && e.detail === 1) {
+                    selectElement(el.id);
+                    return;
+                }
+                selectElement(el.id);
+                startDrag(e, el.id);
+            });
+
+            div.addEventListener('dblclick', (e) => {
+                if (isPreview) return;
+                const editables = div.querySelectorAll('.editable-text');
+                if (editables.length === 0) return;
+                editables.forEach(ed => {
+                    ed.setAttribute('contenteditable', 'true');
+                    ed.style.cursor = 'text';
+                });
+                const first = editables[0];
+                first.focus();
+                const range = document.createRange();
+                range.selectNodeContents(first);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+
+                const finishEdit = () => {
+                    editables.forEach(ed => {
+                        ed.setAttribute('contenteditable', 'false');
+                        ed.style.cursor = '';
+                        ed.removeEventListener('blur', finishEdit);
+                    });
+                    syncHtmlFromDom(el.id);
+                };
+                editables.forEach(ed => ed.addEventListener('blur', finishEdit));
+            });
+
+            div.addEventListener('click', (e) => {
+                const delBtn = e.target.closest('[data-delete]');
+                if (delBtn) {
+                    e.stopPropagation();
+                    deleteElement(delBtn.dataset.delete);
+                }
+            });
+
+            canvas.appendChild(div);
+        }
+
+        function getCleanHtml(dom) {
+            const clone = dom.cloneNode(true);
+            clone.querySelectorAll('.resize-handle, .delete-btn').forEach(n => n.remove());
+            return clone.innerHTML.trim();
+        }
+
+        function syncHtmlFromDom(id) {
+            const el = elements.find(e => e.id === id);
+            const dom = document.getElementById(id);
+            if (!el || !dom) return;
+            el.html = getCleanHtml(dom);
+            el.origHtml = el.html;
+            updateCode();
+            if (selectedElement === id) showProps(id);
+        }
+
+        function startDrag(e, id) {
+            e.preventDefault();
+            isDragging = true;
+            const el = elements.find(e => e.id === id);
+            const rect = canvas.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left - el.x + canvas.scrollLeft;
+            dragOffset.y = e.clientY - rect.top - el.y + canvas.scrollTop;
+
+            const onMove = (ev) => {
+                if (!isDragging) return;
+                const rect = canvas.getBoundingClientRect();
+                el.x = Math.max(0, ev.clientX - rect.left - dragOffset.x + canvas.scrollLeft);
+                el.y = Math.max(0, ev.clientY - rect.top - dragOffset.y + canvas.scrollTop);
+                const dom = document.getElementById(id);
+                dom.style.left = el.x + 'px';
+                dom.style.top = el.y + 'px';
+                updateCode();
+                if (selectedElement === id) updatePositionInputs(el);
+            };
+            const onUp = () => {
+                isDragging = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function scaleHtmlContent(html, scale) {
+            if (Math.abs(scale - 1) < 0.01) return html;
+            
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            
+            const scaleValue = (val) => {
+                if (!val) return val;
+                return val.replace(/(-?\d*\.?\d+)(px|rem|em)/g, (match, num, unit) => {
+                    const n = parseFloat(num);
+                    if (isNaN(n) || n === 0) return match;
+                    if (unit === 'px') return Math.round(n * scale) + unit;
+                    return (n * scale).toFixed(2) + unit;
+                });
+            };
+            
+            const scaleElement = (node) => {
+                if (node.nodeType !== 1) return;
+                if (node.style && node.style.cssText) {
+                    const styles = node.style.cssText.split(';').filter(s => s.trim());
+                    const scaledStyles = styles.map(s => {
+                        const colonIdx = s.indexOf(':');
+                        if (colonIdx === -1) return s;
+                        const prop = s.substring(0, colonIdx).trim();
+                        const val = s.substring(colonIdx + 1).trim();
+                        const skipProps = ['opacity', 'z-index', 'line-height', 'font-weight', 'flex', 'order'];
+                        if (skipProps.includes(prop)) return s;
+                        return `${prop}: ${scaleValue(val)}`;
+                    });
+                    node.style.cssText = scaledStyles.join('; ');
+                }
+                
+                Array.from(node.children).forEach(child => scaleElement(child));
+            };
+            
+            scaleElement(temp);
+            return temp.innerHTML;
+        }
+
+        function startResize(e, id, handle) {
+            isResizing = true;
+            const el = elements.find(e => e.id === id);
+            const sx = e.clientX, sy = e.clientY;
+            const sw = el.width, sh = el.height, sex = el.x, sey = el.y;
+            const ow = el.origW, oh = el.origH;
+            const keepRatio = e.shiftKey;
+
+            const onMove = (ev) => {
+                if (!isResizing) return;
+                const dx = ev.clientX - sx, dy = ev.clientY - sy;
+                let newW, newH;
+                if (handle === 'se') {
+                    newW = Math.max(20, sw + dx);
+                    newH = Math.max(16, sh + dy);
+                } else if (handle === 'sw') {
+                    newW = Math.max(20, sw - dx);
+                    newH = Math.max(16, sh + dy);
+                } else if (handle === 'ne') {
+                    newW = Math.max(20, sw + dx);
+                    newH = Math.max(16, sh - dy);
+                } else {
+                    newW = Math.max(20, sw - dx);
+                    newH = Math.max(16, sh - dy);
+                }
+                
+                let finalW, finalH, scale;
+                if (keepRatio) {
+                    const scaleW = newW / ow;
+                    const scaleH = newH / oh;
+                    scale = Math.max(scaleW, scaleH);
+                    finalW = Math.round(ow * scale);
+                    finalH = Math.round(oh * scale);
+                } else {
+                    finalW = newW;
+                    finalH = newH;
+                    scale = Math.max(finalW / ow, finalH / oh);
+                }
+                if (handle === 'se') {
+                    el.width = finalW;
+                    el.height = finalH;
+                } else if (handle === 'sw') {
+                    el.x = sex + sw - finalW;
+                    el.width = finalW;
+                    el.height = finalH;
+                } else if (handle === 'ne') {
+                    el.width = finalW;
+                    el.y = sey + sh - finalH;
+                    el.height = finalH;
+                } else {
+                    el.x = sex + sw - finalW;
+                    el.y = sey + sh - finalH;
+                    el.width = finalW;
+                    el.height = finalH;
+                }
+                el.x = Math.max(0, el.x);
+                el.y = Math.max(0, el.y);
+                el.html = scaleHtmlContent(el.origHtml, scale);
+                updateElementVisual(el);
+                const dom = document.getElementById(id);
+                if (dom) {
+                    dom.innerHTML = el.html +
+                        '<div class="resize-handle se" data-handle="se"></div>' +
+                        '<div class="resize-handle sw" data-handle="sw"></div>' +
+                        '<div class="resize-handle ne" data-handle="ne"></div>' +
+                        '<div class="resize-handle nw" data-handle="nw"></div>' +
+                        `<div class="delete-btn" data-delete="${id}">×</div>`;
+                }
+                updateCode();
+                if (selectedElement === id) showProps(id);
+            };
+            const onUp = () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function updateElementVisual(el) {
+            const dom = document.getElementById(el.id);
+            if (!dom) return;
+            dom.style.left = el.x + 'px';
+            dom.style.top = el.y + 'px';
+            dom.style.width = el.width + 'px';
+            dom.style.height = el.height + 'px';
+        }
+
+        function selectElement(id) {
+            if (isPreview) return;
+            document.querySelectorAll('.canvas-element').forEach(el => el.classList.remove('selected'));
+            const dom = document.getElementById(id);
+            if (dom) dom.classList.add('selected');
+            selectedElement = id;
+            showProps(id);
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.canvas-element').forEach(el => el.classList.remove('selected'));
+            selectedElement = null;
+            propsContent.innerHTML = '<div class="no-selection">选中画布上的组件<br>编辑属性和样式</div>';
+        }
+
+        function deleteElement(id) {
+            elements = elements.filter(el => el.id !== id);
+            const dom = document.getElementById(id);
+            if (dom) dom.remove();
+            if (selectedElement === id) {
+                selectedElement = null;
+                propsContent.innerHTML = '<div class="no-selection">选中画布上的组件<br>编辑属性和样式</div>';
+            }
+            updateCode();
+            updateEmptyState();
+        }
+
+        function clearCanvas() {
+            if (!elements.length) return;
+            if (!confirm('确定清空画布上的所有组件？')) return;
+            elements = [];
+            document.querySelectorAll('.canvas-element').forEach(el => el.remove());
+            selectedElement = null;
+            propsContent.innerHTML = '<div class="no-selection">选中画布上的组件<br>编辑属性和样式</div>';
+            updateCode();
+            updateEmptyState();
+        }
+
+        function updateEmptyState() {
+            emptyState.style.display = elements.length === 0 ? 'block' : 'none';
+        }
+
+        /* ── Properties Panel ── */
+        function showProps(id) {
+            const el = elements.find(e => e.id === id);
+            if (!el) return;
+
+            const dom = document.getElementById(id);
+            if (!dom) return;
+            const cs = getComputedStyle(dom);
+            const bgColor = rgbToHex(cs.backgroundColor) || '#ffffff';
+            const textColor = rgbToHex(cs.color) || '#1a1a1a';
+            const fontSize = parseInt(cs.fontSize) || 14;
+            const brMatch = el.style.match(/border-radius:\s*(\d+)/);
+            const borderRadius = brMatch ? parseInt(brMatch[1]) : 0;
+
+            let html = `<div class="props-header">${getTypeName(el.type)}</div>`;
+
+            html += `<div class="props-section">
+                <div class="props-section-title">位置与尺寸</div>
+                <div class="prop-2col">
+                    <div class="col"><label>X</label><input type="number" id="px" value="${Math.round(el.x)}" onchange="setProp('x',this.value)"></div>
+                    <div class="col"><label>Y</label><input type="number" id="py" value="${Math.round(el.y)}" onchange="setProp('y',this.value)"></div>
+                </div>
+                <div class="prop-2col">
+                    <div class="col"><label>W</label><input type="number" id="pw" value="${Math.round(el.width)}" onchange="setProp('width',this.value)"></div>
+                    <div class="col"><label>H</label><input type="number" id="ph" value="${Math.round(el.height)}" onchange="setProp('height',this.value)"></div>
+                </div>
+            </div>`;
+
+            html += `<div class="props-section">
+                <div class="props-section-title">样式</div>
+                <div class="prop-row">
+                    <label>背景</label>
+                    <input type="color" id="pbg" value="${bgColor}" onchange="setStyle('background',this.value);this.nextElementSibling.value=this.value">
+                    <input class="color-hex" type="text" value="${bgColor}" onchange="setStyle('background',this.value);document.getElementById('pbg').value=this.value">
+                </div>
+                <div class="prop-row">
+                    <label>文字</label>
+                    <input type="color" id="ptc" value="${textColor}" onchange="setColor(this.value);this.nextElementSibling.value=this.value">
+                    <input class="color-hex" type="text" value="${textColor}" onchange="setColor(this.value);document.getElementById('ptc').value=this.value">
+                </div>
+                <div class="prop-row">
+                    <label>字号</label>
+                    <input type="number" value="${fontSize}" min="8" max="120" onchange="setFontSize(this.value)">
+                </div>
+                <div class="prop-row">
+                    <label>圆角</label>
+                    <input type="number" value="${borderRadius}" min="0" max="200" onchange="setStyle('border-radius',this.value+'px')">
+                </div>
+                <div class="prop-row">
+                    <label>透明</label>
+                    <input type="number" value="${parseFloat(cs.opacity) || 1}" min="0" max="1" step="0.1" onchange="setStyle('opacity',this.value)">
+                </div>
+            </div>`;
+
+            const t = T[el.type];
+            if (t && t.editable) {
+                const textEls = dom.querySelectorAll('.editable-text');
+                if (textEls.length > 0) {
+                    html += `<div class="props-section"><div class="props-section-title">文本内容</div>`;
+                    textEls.forEach((te, i) => {
+                        const txt = te.textContent.trim();
+                        html += `<div class="prop-row"><label>${i + 1}</label><textarea onchange="setTextContent(${i},this.value)">${escHtml(txt)}</textarea></div>`;
+                    });
+                    html += `</div>`;
+                }
+            }
+
+            html += `<div class="props-section">
+                <div class="props-section-title">边框</div>
+                <div class="prop-row">
+                    <label>颜色</label>
+                    <input type="color" value="#e8e8e8" onchange="setBorder('1px solid '+this.value)">
+                    <input class="color-hex" type="text" placeholder="#e8e8e8" onchange="setBorder('1px solid '+this.value)">
+                </div>
+                <div class="prop-row">
+                    <label>粗细</label>
+                    <select onchange="setBorderWidth(this.value)">
+                        <option value="0">无</option>
+                        <option value="1">1px</option>
+                        <option value="2">2px</option>
+                        <option value="3">3px</option>
+                    </select>
+                </div>
+            </div>`;
+
+            html += `<div class="props-section">
+                <div class="props-section-title">阴影</div>
+                <div class="prop-row">
+                    <label>效果</label>
+                    <select onchange="setShadow(this.value)">
+                        <option value="none">无</option>
+                        <option value="0 1px 3px rgba(0,0,0,0.08)">轻微</option>
+                        <option value="0 2px 8px rgba(0,0,0,0.12)">中等</option>
+                        <option value="0 4px 16px rgba(0,0,0,0.15)">明显</option>
+                        <option value="0 8px 32px rgba(0,0,0,0.2)">强烈</option>
+                    </select>
+                </div>
+            </div>`;
+
+            propsContent.innerHTML = html;
+        }
+
+        function getTypeName(type) {
+            const names = { heading:'标题', text:'文本', button:'按钮', link:'链接', image:'图片', input:'输入框', divider:'分割线', container:'容器', columns:'两列', spacer:'间距', card:'卡片', nav:'导航栏', hero:'Hero', footer:'页脚', badge:'徽章', alert:'提示框', list:'列表', testimonial:'引用', pricing:'价格卡', progress:'进度条', video:'视频', map:'地图占位', ai:'AI组件' };
+            return names[type] || type;
+        }
+
+        function updatePositionInputs(el) {
+            const px = document.getElementById('px');
+            const py = document.getElementById('py');
+            if (px) px.value = Math.round(el.x);
+            if (py) py.value = Math.round(el.y);
+        }
+
+        function setProp(prop, val) {
+            const el = elements.find(e => e.id === selectedElement);
+            if (!el) return;
+            el[prop] = parseInt(val);
+            if (prop === 'width' || prop === 'height') {
+                const scale = Math.max(el.width / el.origW, el.height / el.origH);
+                el.width = Math.round(el.origW * scale);
+                el.height = Math.round(el.origH * scale);
+                el.html = scaleHtmlContent(el.origHtml, scale);
+                const dom = document.getElementById(selectedElement);
+                if (dom) {
+                    dom.innerHTML = el.html +
+                        '<div class="resize-handle se" data-handle="se"></div>' +
+                        '<div class="resize-handle sw" data-handle="sw"></div>' +
+                        '<div class="resize-handle ne" data-handle="ne"></div>' +
+                        '<div class="resize-handle nw" data-handle="nw"></div>' +
+                        `<div class="delete-btn" data-delete="${selectedElement}">×</div>`;
+                }
+            }
+            updateElementVisual(el);
+            updateCode();
+        }
+
+        function setStyle(prop, val) {
+            const el = elements.find(e => e.id === selectedElement);
+            if (!el) return;
+            const dom = document.getElementById(selectedElement);
+            dom.style[prop] = val;
+            el.style = dom.style.cssText.replace(/left:[^;]+;|top:[^;]+;|width:[^;]+;|height:[^;]+;/g, '');
+            updateCode();
+        }
+
+        function setColor(val) {
+            const dom = document.getElementById(selectedElement);
+            if (!dom) return;
+            dom.querySelectorAll('.editable-text').forEach(t => t.style.color = val);
+            dom.style.color = val;
+            const el = elements.find(e => e.id === selectedElement);
+            if (el) {
+                el.style = dom.style.cssText.replace(/left:[^;]+;|top:[^;]+;|width:[^;]+;|height:[^;]+;/g, '');
+                el.html = getCleanHtml(dom);
+                el.origHtml = el.html;
+            }
+            updateCode();
+        }
+
+        function setFontSize(val) {
+            const dom = document.getElementById(selectedElement);
+            if (!dom) return;
+            dom.querySelectorAll('.editable-text').forEach(t => t.style.fontSize = val + 'px');
+            dom.style.fontSize = val + 'px';
+            const el = elements.find(e => e.id === selectedElement);
+            if (el) {
+                el.style = dom.style.cssText.replace(/left:[^;]+;|top:[^;]+;|width:[^;]+;|height:[^;]+;/g, '');
+                el.html = getCleanHtml(dom);
+                el.origHtml = el.html;
+            }
+            updateCode();
+        }
+
+        function setBorder(val) {
+            const el = elements.find(e => e.id === selectedElement);
+            if (!el) return;
+            const dom = document.getElementById(selectedElement);
+            dom.style.border = val;
+            el.style = dom.style.cssText.replace(/left:[^;]+;|top:[^;]+;|width:[^;]+;|height:[^;]+;/g, '');
+            updateCode();
+        }
+
+        function setBorderWidth(val) {
+            const el = elements.find(e => e.id === selectedElement);
+            if (!el) return;
+            const dom = document.getElementById(selectedElement);
+            if (val === '0') {
+                dom.style.border = 'none';
+            } else {
+                const current = dom.style.border;
+                const color = current ? (current.split(' ')[2] || '#e8e8e8') : '#e8e8e8';
+                dom.style.border = `${val}px solid ${color}`;
+            }
+            el.style = dom.style.cssText.replace(/left:[^;]+;|top:[^;]+;|width:[^;]+;|height:[^;]+;/g, '');
+            updateCode();
+        }
+
+        function setShadow(val) {
+            const el = elements.find(e => e.id === selectedElement);
+            if (!el) return;
+            const dom = document.getElementById(selectedElement);
+            dom.style.boxShadow = val;
+            el.style = dom.style.cssText.replace(/left:[^;]+;|top:[^;]+;|width:[^;]+;|height:[^;]+;/g, '');
+            updateCode();
+        }
+
+        function setTextContent(index, val) {
+            const dom = document.getElementById(selectedElement);
+            if (!dom) return;
+            const editables = dom.querySelectorAll('.editable-text');
+            if (editables[index]) {
+                editables[index].textContent = val;
+                syncHtmlFromDom(selectedElement);
+            }
+        }
+
+        function rgbToHex(rgb) {
+            if (!rgb || rgb === 'transparent' || rgb === 'rgba(0, 0, 0, 0)') return '#ffffff';
+            const match = rgb.match(/(\d+)/g);
+            if (!match || match.length < 3) return '#ffffff';
+            return '#' + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        }
+
+        function escHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        /* ── Preview Mode ── */
+        function togglePreview() {
+            isPreview = !isPreview;
+            document.body.classList.toggle('preview-mode', isPreview);
+            document.getElementById('previewToggle').classList.toggle('active', isPreview);
+            if (isPreview) {
+                deselectAll();
+                showToast('预览模式 — 点击按钮和链接测试交互');
+            } else {
+                showToast('已退出预览模式');
+            }
+        }
+
+        /* ── Code Generation ── */
+        function updateCode() {
+            if (!elements.length) {
+                codeOutput.innerHTML = '<span class="comment">&lt;!-- 拖拽组件后代码实时生成 --&gt;</span>';
+                return;
+            }
+            if (currentTab === 'html') codeOutput.innerHTML = genHTML();
+            else if (currentTab === 'css') codeOutput.innerHTML = genCSS();
+            else codeOutput.innerHTML = genFull();
+        }
+
+        function genHTML() {
+            let h = '<span class="tag">&lt;body&gt;</span>\n';
+            elements.forEach(el => {
+                el.html.split('\n').forEach(line => { h += '  ' + hl(line) + '\n'; });
+            });
+            h += '<span class="tag">&lt;/body&gt;</span>';
+            return h;
+        }
+
+        function genCSS() {
+            let c = '';
+            elements.forEach((el, i) => {
+                const dom = document.getElementById(el.id);
+                const cls = `component-${i + 1}`;
+                c += `<span class="selector">.${cls}</span> <span class="punctuation">{</span>\n`;
+                c += `  <span class="property">position</span>: <span class="value">absolute</span>;\n`;
+                c += `  <span class="property">left</span>: <span class="value">${Math.round(el.x)}px</span>;\n`;
+                c += `  <span class="property">top</span>: <span class="value">${Math.round(el.y)}px</span>;\n`;
+                c += `  <span class="property">width</span>: <span class="value">${Math.round(el.width)}px</span>;\n`;
+                c += `  <span class="property">height</span>: <span class="value">${Math.round(el.height)}px</span>;\n`;
+                if (dom) {
+                    const s = dom.style;
+                    for (let j = 0; j < s.length; j++) {
+                        const p = s[j];
+                        if (['left','top','width','height','position'].includes(p)) continue;
+                        c += `  <span class="property">${p}</span>: <span class="value">${s[p]}</span>;\n`;
+                    }
+                }
+                c += `<span class="punctuation">}</span>\n\n`;
+            });
+            return c;
+        }
+
+        function genFull() {
+            let c = '<span class="comment">&lt;!DOCTYPE html&gt;</span>\n';
+            c += '<span class="tag">&lt;html</span> <span class="attr">lang</span>=<span class="value">"zh-CN"</span><span class="tag">&gt;</span>\n';
+            c += '<span class="tag">&lt;head&gt;</span>\n';
+            c += '  <span class="tag">&lt;meta</span> <span class="attr">charset</span>=<span class="value">"UTF-8"</span><span class="tag">&gt;</span>\n';
+            c += '  <span class="tag">&lt;meta</span> <span class="attr">name</span>=<span class="value">"viewport"</span> <span class="attr">content</span>=<span class="value">"width=device-width, initial-scale=1.0"</span><span class="tag">&gt;</span>\n';
+            c += '  <span class="tag">&lt;title&gt;</span><span class="text">My Page</span><span class="tag">&lt;/title&gt;</span>\n';
+            c += '  <span class="tag">&lt;style&gt;</span>\n';
+            c += '    <span class="selector">body</span> { <span class="property">margin</span>: <span class="value">0</span>; <span class="property">font-family</span>: <span class="value">system-ui, sans-serif</span>; }\n';
+            c += '    <span class="selector">.page</span> { <span class="property">position</span>: <span class="value">relative</span>; <span class="property">min-height</span>: <span class="value">100vh</span>; }\n';
+            elements.forEach((el, i) => {
+                const dom = document.getElementById(el.id);
+                c += `    <span class="selector">.c${i + 1}</span> { <span class="property">position</span>: <span class="value">absolute</span>; <span class="property">left</span>: <span class="value">${Math.round(el.x)}px</span>; <span class="property">top</span>: <span class="value">${Math.round(el.y)}px</span>; <span class="property">width</span>: <span class="value">${Math.round(el.width)}px</span>; <span class="property">height</span>: <span class="value">${Math.round(el.height)}px</span>;`;
+                if (dom) {
+                    const s = dom.style;
+                    for (let j = 0; j < s.length; j++) {
+                        const p = s[j];
+                        if (['left','top','width','height','position'].includes(p)) continue;
+                        c += ` <span class="property">${p}</span>: <span class="value">${s[p]}</span>;`;
+                    }
+                }
+                c += ` }\n`;
+            });
+            c += '  <span class="tag">&lt;/style&gt;</span>\n';
+            c += '<span class="tag">&lt;/head&gt;</span>\n';
+            c += '<span class="tag">&lt;body&gt;</span>\n';
+            c += '  <span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="value">"page"</span><span class="tag">&gt;</span>\n';
+            elements.forEach((el, i) => {
+                c += `    <span class="tag">&lt;div</span> <span class="attr">class</span>=<span class="value">"c${i + 1}"</span><span class="tag">&gt;</span>\n`;
+                el.html.split('\n').forEach(line => { c += '      ' + hl(line) + '\n'; });
+                c += `    <span class="tag">&lt;/div&gt;</span>\n`;
+            });
+            c += '  </span><span class="tag">&lt;/div&gt;</span>\n';
+            c += '<span class="tag">&lt;/body&gt;</span>\n<span class="tag">&lt;/html&gt;</span>';
+            return c;
+        }
+
+        function hl(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/(&lt;\/?)([\w-]+)/g, '<span class="tag">$1$2</span>')
+                .replace(/([\w-]+)(=)/g, '<span class="attr">$1</span>$2')
+                .replace(/"([^"]*)"/g, '<span class="value">"$1"</span>');
+        }
+
+        function getPlainText() {
+            if (!elements.length) return '';
+            if (currentTab === 'html') {
+                let h = '<body>\n';
+                elements.forEach(el => { h += '  ' + el.html + '\n'; });
+                return h + '</body>';
+            } else if (currentTab === 'css') {
+                let c = '';
+                elements.forEach((el, i) => {
+                    const dom = document.getElementById(el.id);
+                    c += `.c${i + 1} {\n  position: absolute;\n  left: ${Math.round(el.x)}px;\n  top: ${Math.round(el.y)}px;\n  width: ${Math.round(el.width)}px;\n  height: ${Math.round(el.height)}px;\n`;
+                    if (dom) { const s = dom.style; for (let j = 0; j < s.length; j++) { const p = s[j]; if (!['left','top','width','height','position'].includes(p)) c += `  ${p}: ${s[p]};\n`; } }
+                    c += '}\n\n';
+                });
+                return c;
+            } else {
+                const canvasW = canvas.scrollWidth || 1200;
+                const canvasH = Math.max(...elements.map(el => el.y + el.height), 800);
+                let c = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My Page</title>\n  <style>\n    body { margin: 0; font-family: system-ui, sans-serif; background: #fff; }\n    .page { position: relative; width: ' + canvasW + 'px; height: ' + canvasH + 'px; margin: 0 auto; }\n    .component { position: absolute; overflow: hidden; min-width: 20px; min-height: 16px; }\n';
+                elements.forEach((el, i) => {
+                    const dom = document.getElementById(el.id);
+                    c += `    .c${i + 1} { left: ${Math.round(el.x)}px; top: ${Math.round(el.y)}px; width: ${Math.round(el.width)}px; height: ${Math.round(el.height)}px;`;
+                    if (dom) { const s = dom.style; for (let j = 0; j < s.length; j++) { const p = s[j]; if (!['left','top','width','height','position','min-width','min-height','overflow'].includes(p)) c += ` ${p}: ${s[p]};`; } }
+                    c += ' }\n';
+                });
+                c += '  </style>\n</head>\n<body>\n  <div class="page">\n';
+                elements.forEach((el, i) => { c += `    <div class="component c${i + 1}">\n      ${el.html}\n    </div>\n`; });
+                return c + '  </div>\n</body>\n</html>';
+            }
+        }
+
+        /* ── Copy Functions ── */
+        function copyCode() {
+            const text = getPlainText();
+            if (!text) { showToast('画布为空，无法复制'); return; }
+            navigator.clipboard.writeText(text).then(() => showToast('代码已复制到剪贴板'));
+        }
+
+        function copyPrompt() {
+            if (!elements.length) { showToast('画布为空，无法生成提示词'); return; }
+            let prompt = '请根据以下布局描述生成一个完整的 HTML 页面：\n\n';
+            prompt += '## 页面布局\n\n';
+            prompt += `页面包含 ${elements.length} 个组件，使用绝对定位布局。\n\n`;
+            elements.forEach((el, i) => {
+                const dom = document.getElementById(el.id);
+                prompt += `### 组件 ${i + 1}：${getTypeName(el.type)}\n`;
+                prompt += `- 位置：(${Math.round(el.x)}, ${Math.round(el.y)})\n`;
+                prompt += `- 尺寸：${Math.round(el.width)} × ${Math.round(el.height)}px\n`;
+                if (dom) {
+                    const s = dom.style;
+                    const styles = [];
+                    for (let j = 0; j < s.length; j++) {
+                        const p = s[j];
+                        if (!['left','top','width','height','position'].includes(p)) {
+                            styles.push(`${p}: ${s[p]}`);
+                        }
+                    }
+                    if (styles.length) prompt += `- 样式：${styles.join('；')}\n`;
+                }
+                const textContent = [];
+                if (dom) {
+                    dom.querySelectorAll('.editable-text').forEach(te => {
+                        const t = te.textContent.trim();
+                        if (t) textContent.push(t);
+                    });
+                }
+                if (textContent.length) prompt += `- 文本内容：${textContent.join(' / ')}\n`;
+                prompt += '\n';
+            });
+            prompt += '## 要求\n';
+            prompt += '- 生成一个完整的、可直接运行的 HTML 文件\n';
+            prompt += '- 保持组件的相对位置和样式\n';
+            prompt += '- 使用语义化 HTML 标签\n';
+            prompt += '- 确保页面在不同屏幕尺寸下基本可用\n';
+
+            navigator.clipboard.writeText(prompt).then(() => showToast('提示词已复制到剪贴板'));
+        }
+
+        function exportProject() {
+            const text = getPlainText();
+            if (!text) { showToast('画布为空，无法导出'); return; }
+            const blob = new Blob([text], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'index.html';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('文件已导出');
+        }
+
+        /* ── Toast ── */
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        /* ── Tab Switching ── */
+        document.querySelectorAll('.code-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentTab = tab.dataset.tab;
+                updateCode();
+            });
+        });
+
+        /* ── Viewport Switching ── */
+        document.querySelectorAll('.canvas-toolbar span').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.canvas-toolbar span').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const v = btn.dataset.view;
+                const c = document.getElementById('canvas');
+                if (v === 'desktop') { c.style.width = '100%'; c.style.left = '16px'; c.style.right = '16px'; c.style.margin = '0'; }
+                else if (v === 'tablet') { c.style.width = '768px'; c.style.left = '50%'; c.style.right = 'auto'; c.style.margin = '0 0 0 -384px'; }
+                else { c.style.width = '375px'; c.style.left = '50%'; c.style.right = 'auto'; c.style.margin = '0 0 0 -187.5px'; }
+            });
+        });
+
+        /* ── Canvas Click to Deselect ── */
+        canvas.addEventListener('click', (e) => {
+            if (isPreview) return;
+            if (e.target === canvas || e.target === emptyState || e.target.closest('.empty-state')) {
+                deselectAll();
+            }
+        });
+
+        /* ── Keyboard Shortcuts ── */
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (document.getElementById('aiModalOverlay').classList.contains('show')) { closeAiModal(); return; }
+                if (isPreview) { togglePreview(); return; }
+                deselectAll();
+            }
+            if (e.key === 'Delete' && selectedElement) {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+                deleteElement(selectedElement);
+            }
+        });
+
+        /* ── AI Assistant ── */
+        let aiProvider = 'deepseek';
+        let aiMode = 'component';
+        const aiProviderConfig = {
+            deepseek: {
+                name: 'DeepSeek',
+                url: 'https://api.deepseek.com/v1/chat/completions',
+                model: 'deepseek-chat',
+                keyHint: 'DeepSeek API Key 从 platform.deepseek.com 获取'
+            },
+            glm: {
+                name: 'GLM (智谱)',
+                url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+                model: 'glm-4-flash',
+                keyHint: '智谱 API Key 从 open.bigmodel.cn 获取'
+            },
+            openai: {
+                name: 'ChatGPT',
+                url: 'https://api.openai.com/v1/chat/completions',
+                model: 'gpt-4o-mini',
+                keyHint: 'OpenAI API Key 从 platform.openai.com 获取'
+            }
+        };
+
+        function openAiModal() {
+            document.getElementById('aiModalOverlay').classList.add('show');
+            const savedKey = localStorage.getItem(`ai_key_${aiProvider}`);
+            if (savedKey) document.getElementById('aiApiKey').value = savedKey;
+            document.getElementById('aiPrompt').focus();
+        }
+
+        function closeAiModal() {
+            document.getElementById('aiModalOverlay').classList.remove('show');
+            resetAiStatus();
+        }
+
+        document.getElementById('aiModalOverlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeAiModal();
+        });
+
+        function selectAiMode(mode) {
+            aiMode = mode;
+            document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+            const label = document.getElementById('aiPromptLabel');
+            const textarea = document.getElementById('aiPrompt');
+            const btn = document.getElementById('aiSubmitBtn');
+            if (mode === 'website') {
+                label.textContent = '描述你想要的网站';
+                textarea.placeholder = '例如：一个科技公司官网，包含顶部导航栏、Hero 大图区域、产品特色介绍（三列布局）、客户评价、页脚联系信息';
+                btn.textContent = '生成整站并添加到画布';
+            } else {
+                label.textContent = '描述你想要的组件';
+                textarea.placeholder = '例如：一个带搜索框的用户个人资料卡片，包含头像、姓名、职位和三个社交链接图标';
+                btn.textContent = '生成并添加到画布';
+            }
+        }
+
+        function selectAiProvider(provider) {
+            aiProvider = provider;
+            document.querySelectorAll('.ai-provider-btn[data-provider]').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-provider="${provider}"]`).classList.add('active');
+            document.getElementById('aiKeyHint').textContent = aiProviderConfig[provider].keyHint;
+            const savedKey = localStorage.getItem(`ai_key_${provider}`);
+            if (savedKey) document.getElementById('aiApiKey').value = savedKey;
+        }
+
+        function resetAiStatus() {
+            const status = document.getElementById('aiStatus');
+            status.classList.remove('show', 'error', 'success');
+            document.getElementById('aiSubmitBtn').disabled = false;
+        }
+
+        function showAiStatus(msg, type) {
+            const status = document.getElementById('aiStatus');
+            const text = document.getElementById('aiStatusText');
+            status.classList.remove('error', 'success');
+            if (type) status.classList.add(type);
+            if (type === 'error' || type === 'success') {
+                status.querySelector('.ai-spinner').style.display = 'none';
+            } else {
+                status.querySelector('.ai-spinner').style.display = 'block';
+            }
+            text.textContent = msg;
+            status.classList.add('show');
+        }
+
+        function parseAiHtml(text) {
+            let html = text;
+            const codeBlockMatch = html.match(/```(?:html)?\s*([\s\S]*?)```/);
+            if (codeBlockMatch) {
+                html = codeBlockMatch[1].trim();
+            }
+            const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+            if (bodyMatch) html = bodyMatch[1].trim();
+            return html.trim();
+        }
+
+        function applyContentToTemplate(type, content) {
+            if (!content || !T[type]) return T[type].html;
+            const temp = document.createElement('div');
+            temp.innerHTML = T[type].html;
+            const editables = temp.querySelectorAll('.editable-text');
+            const texts = [];
+            editables.forEach(el => texts.push(el.textContent));
+
+            if (type === 'nav') {
+                if (content.brand && editables[0]) editables[0].textContent = content.brand;
+                if (content.links) {
+                    const linkContainer = temp.querySelector('div[style*="gap:20px"]') || temp.querySelector('div');
+                    if (linkContainer) {
+                        const links = linkContainer.querySelectorAll('a');
+                        content.links.forEach((text, i) => {
+                            if (links[i]) links[i].textContent = text;
+                        });
+                    }
+                }
+                if (content.buttonText) {
+                    const btn = temp.querySelector('button');
+                    if (btn) btn.textContent = content.buttonText;
+                }
+            } else if (type === 'hero') {
+                if (content.badge && editables[0]) editables[0].textContent = content.badge;
+                if (content.title && editables[1]) editables[1].textContent = content.title;
+                if (content.subtitle && editables[2]) editables[2].textContent = content.subtitle;
+                if (content.buttons) {
+                    const btns = temp.querySelectorAll('button');
+                    content.buttons.forEach((text, i) => {
+                        if (btns[i]) btns[i].textContent = text;
+                    });
+                }
+            } else if (type === 'heading') {
+                if (content.text && editables[0]) editables[0].textContent = content.text;
+            } else if (type === 'text') {
+                if (content.text && editables[0]) editables[0].textContent = content.text;
+            } else if (type === 'button') {
+                const btn = temp.querySelector('button');
+                if (content.text && btn) btn.textContent = content.text;
+            } else if (type === 'card') {
+                if (content.title && editables[0]) editables[0].textContent = content.title;
+                if (content.description && editables[1]) editables[1].textContent = content.description;
+                if (content.linkText) {
+                    const link = temp.querySelector('a');
+                    if (link) link.textContent = content.linkText;
+                }
+            } else if (type === 'footer') {
+                if (content.copyright && editables[0]) editables[0].textContent = content.copyright;
+                if (content.links) {
+                    const links = temp.querySelectorAll('a');
+                    content.links.forEach((text, i) => {
+                        if (links[i]) links[i].textContent = text;
+                    });
+                }
+            } else if (type === 'badge') {
+                if (content.text && editables[0]) editables[0].textContent = content.text;
+            } else if (type === 'alert') {
+                if (content.title && editables[0]) editables[0].textContent = content.title;
+                if (content.message && editables[1]) editables[1].textContent = content.message;
+            } else if (type === 'testimonial') {
+                if (content.quote && editables[0]) editables[0].textContent = content.quote;
+                if (content.author && editables[1]) editables[1].textContent = content.author;
+                if (content.role && editables[2]) editables[2].textContent = content.role;
+            } else if (type === 'pricing') {
+                if (content.plan && editables[0]) editables[0].textContent = content.plan;
+                if (content.price && editables[1]) editables[1].textContent = content.price;
+                if (content.description && editables[2]) editables[2].textContent = content.description;
+                if (content.features) {
+                    const featureDivs = temp.querySelectorAll('div[style*="border-bottom"]');
+                    content.features.forEach((text, i) => {
+                        if (featureDivs[i]) featureDivs[i].textContent = '✓  ' + text;
+                    });
+                }
+                if (content.buttonText) {
+                    const btn = temp.querySelector('button');
+                    if (btn) btn.textContent = content.buttonText;
+                }
+            } else if (type === 'list') {
+                if (content.items) {
+                    const items = temp.querySelectorAll('li');
+                    content.items.forEach((text, i) => {
+                        if (items[i]) {
+                            const span = items[i].querySelector('span');
+                            items[i].textContent = '';
+                            if (span) items[i].appendChild(span.cloneNode(true));
+                            items[i].appendChild(document.createTextNode(text));
+                        }
+                    });
+                }
+            } else if (type === 'link') {
+                if (content.text && editables[0]) editables[0].textContent = content.text;
+            } else if (type === 'progress') {
+                if (content.label && editables[0]) editables[0].textContent = content.label;
+                if (content.value !== undefined) {
+                    if (editables[1]) editables[1].textContent = content.value + '%';
+                    const bar = temp.querySelector('div[style*="border-radius:4px;overflow:hidden"] > div');
+                    if (bar) bar.style.width = content.value + '%';
+                }
+            }
+            return temp.innerHTML;
+        }
+
+        function addAiWebsiteFromJson(jsonStr) {
+            let data;
+            try {
+                const cleaned = jsonStr.replace(/```(?:json)?\s*/g, '').replace(/```/g, '').trim();
+                data = JSON.parse(cleaned);
+            } catch (e) {
+                throw new Error('AI 返回的 JSON 格式无效：' + e.message);
+            }
+
+            const components = data.components || data;
+            if (!Array.isArray(components)) throw new Error('AI 返回的数据格式不正确');
+
+            const canvasW = canvas.clientWidth || 960;
+            const pageW = Math.min(960, canvasW - 40);
+            const startX = Math.max(10, (canvasW - pageW) / 2);
+            let currentY = 10;
+            let count = 0;
+
+            components.forEach((comp, i) => {
+                const type = comp.type;
+                if (!T[type]) return;
+
+                const template = T[type];
+                const html = comp.content ? applyContentToTemplate(type, comp.content) : template.html;
+                const w = comp.width || template.w;
+                const h = comp.height || template.h;
+                const x = comp.x !== undefined ? comp.x : startX;
+                const y = comp.y !== undefined ? comp.y : currentY;
+
+                const id = 'el-' + Date.now() + '-' + i;
+                const el = {
+                    id, type,
+                    x, y, width: w, height: h,
+                    origW: w, origH: h,
+                    origHtml: html,
+                    html: html,
+                    style: template.style || ''
+                };
+                elements.push(el);
+                renderElement(el);
+
+                currentY = y + h + (comp.gap !== undefined ? comp.gap : 4);
+                count++;
+            });
+
+            if (count === 0) throw new Error('没有有效的组件被添加');
+            updateEmptyState();
+            updateCode();
+            return count;
+        }
+
+        async function submitAiRequest() {
+            const apiKey = document.getElementById('aiApiKey').value.trim();
+            const prompt = document.getElementById('aiPrompt').value.trim();
+            if (!apiKey) { showAiStatus('请输入 API Key', 'error'); return; }
+            if (!prompt) { showAiStatus(aiMode === 'website' ? '请描述你想要的网站' : '请描述你想要的组件', 'error'); return; }
+
+            localStorage.setItem(`ai_key_${aiProvider}`, apiKey);
+            const config = aiProviderConfig[aiProvider];
+            document.getElementById('aiSubmitBtn').disabled = true;
+            showAiStatus(`${config.name} 正在生成${aiMode === 'website' ? '网站' : '组件'}...`);
+
+            let systemPrompt, maxTokens;
+
+            if (aiMode === 'website') {
+                systemPrompt = `你是一个专业的网页设计师。用户会描述他们想要的网站，你需要返回一个 JSON 数组来描述网站的布局。
+
+你可以使用以下组件类型（type）：
+- nav: 导航栏（默认宽 500px，高 52px）
+- hero: 主视觉区域（默认宽 500px，高 300px）
+- heading: 标题（默认宽 300px，高 44px）
+- text: 正文段落（默认宽 340px，高 64px）
+- button: 按钮（默认宽 120px，高 40px）
+- card: 卡片（默认宽 260px，高 180px）
+- image: 图片占位（默认宽 220px，高 150px）
+- columns: 两列布局（默认宽 420px，高 160px）
+- footer: 页脚（默认宽 500px，高 52px）
+- badge: 徽章标签（默认宽 70px，高 28px）
+- alert: 提示框（默认宽 320px，高 64px）
+- list: 列表（默认宽 220px，高 100px）
+- testimonial: 客户引用（默认宽 280px，高 180px）
+- pricing: 价格卡（默认宽 220px，高 320px）
+- divider: 分割线（默认宽 300px，高 21px）
+- spacer: 间距（默认宽 200px，高 40px）
+- link: 链接（默认宽 110px，高 28px）
+- progress: 进度条（默认宽 240px，高 44px）
+- video: 视频占位（默认宽 300px，高 170px）
+
+每个组件可以有以下字段：
+- type: 组件类型（必填）
+- content: 对象，包含组件的文本内容
+- width: 组件宽度（可选，使用默认值）
+- height: 组件高度（可选，使用默认值）
+- gap: 与下一个组件的间距（可选，默认 4px）
+
+content 字段根据组件类型不同而不同：
+- nav: { "brand": "品牌名", "links": ["链接1", "链接2"], "buttonText": "按钮文字" }
+- hero: { "badge": "标签文字", "title": "主标题", "subtitle": "副标题", "buttons": ["按钮1", "按钮2"] }
+- heading: { "text": "标题文字" }
+- text: { "text": "段落文字" }
+- button: { "text": "按钮文字" }
+- card: { "title": "卡片标题", "description": "描述文字", "linkText": "链接文字" }
+- footer: { "copyright": "版权信息", "links": ["链接1", "链接2"] }
+- badge: { "text": "徽章文字" }
+- alert: { "title": "标题", "message": "消息内容" }
+- testimonial: { "quote": "引用内容", "author": "作者名", "role": "职位·公司" }
+- pricing: { "plan": "方案名", "price": "¥99", "description": "描述", "features": ["功能1", "功能2"], "buttonText": "按钮" }
+- list: { "items": ["项目1", "项目2", "项目3"] }
+- link: { "text": "链接文字" }
+- progress: { "label": "标签", "value": 65 }
+
+布局规则：
+- 页面总宽度 960px
+- 组件从左到右排列，一行放不下就换行
+- 多个组件并排时，设置 x 坐标
+- 不设置 x/y 时组件会自动从上到下排列
+
+只输出 JSON，不要输出任何其他文字。格式示例：
+{"components": [{"type":"nav","width":960},{"type":"hero","width":960,"height":300,"content":{"badge":"全新发布","title":"构建你的项目","subtitle":"快速搭建网页","buttons":["免费试用","了解更多"]}},{"type":"heading","content":{"text":"产品特色"},"gap":8},{"type":"card","content":{"title":"快速","description":"极速搭建","linkText":"详情"}},{"type":"footer","width":960,"content":{"copyright":"© 2026 Brand"}}]}`;
+                maxTokens = 4000;
+            } else {
+                systemPrompt = `你是一个前端网页组件生成器。用户会描述他们想要的网页组件，你需要生成纯 HTML 代码（带内联样式）。
+
+要求：
+- 只输出一个最外层的 <div> 容器及其内部内容
+- 所有样式必须使用内联 style 属性，不要使用 <style> 标签或 class
+- 不要输出 <!DOCTYPE>、<html>、<head>、<body> 等标签
+- 不要输出 markdown 代码块标记
+- 不要输出任何解释文字，只输出 HTML 代码
+- 组件宽度应在 200-400px 之间，高度自适应
+- 使用现代、简洁的设计风格
+- 颜色使用深色系文字 (#1a1a1a, #333, #555) 和白色/浅灰背景
+- 确保 HTML 结构正确，标签闭合`;
+                maxTokens = 2000;
+            }
+
+            try {
+                const response = await fetch(config.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: config.model,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: maxTokens
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `API 请求失败 (${response.status})`);
+                }
+
+                const data = await response.json();
+                const content = data.choices?.[0]?.message?.content;
+                if (!content) throw new Error('AI 返回内容为空');
+
+                if (aiMode === 'website') {
+                    const count = addAiWebsiteFromJson(content);
+                    showAiStatus(`网站已生成！${count} 个组件已添加到画布`, 'success');
+                } else {
+                    const html = parseAiHtml(content);
+                    if (!html) throw new Error('无法解析 AI 返回的内容');
+                    addAiComponentToCanvas(html);
+                    showAiStatus('组件已添加到画布！', 'success');
+                }
+                setTimeout(() => { closeAiModal(); resetAiStatus(); }, 1200);
+            } catch (err) {
+                showAiStatus(`错误：${err.message}`, 'error');
+                document.getElementById('aiSubmitBtn').disabled = false;
+            }
+        }
+
+        function measureHtmlSize(html) {
+            const tempDiv = document.createElement('div');
+            tempDiv.style.cssText = 'position:absolute;visibility:hidden;left:-9999px;top:0;';
+            tempDiv.innerHTML = html;
+            canvas.appendChild(tempDiv);
+            const firstEl = tempDiv.firstElementChild;
+            const rect = firstEl ? firstEl.getBoundingClientRect() : null;
+            const w = rect ? rect.width : 300;
+            const h = rect ? rect.height : 150;
+            canvas.removeChild(tempDiv);
+            return { w, h };
+        }
+
+        function addAiComponentToCanvas(html) {
+            const { w: rawW, h: rawH } = measureHtmlSize(html);
+            const w = Math.max(100, Math.min(600, rawW));
+            const h = Math.max(50, Math.min(500, rawH));
+
+            const x = Math.max(10, (canvas.clientWidth - w) / 2);
+            const y = Math.max(10, (canvas.clientHeight - h) / 2);
+
+            const id = 'el-' + Date.now();
+            const el = {
+                id, type: 'ai',
+                x, y, width: w, height: h,
+                origW: w, origH: h,
+                origHtml: html,
+                html: html,
+                style: ''
+            };
+            elements.push(el);
+            renderElement(el);
+            updateEmptyState();
+            updateCode();
+            selectElement(id);
+        }
+    </script>
+</body>
+</html>
